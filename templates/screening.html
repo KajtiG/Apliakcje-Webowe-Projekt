@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ s.title }} – wybór miejsc{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('movie', movie_id=s.movie_id) }}">← {{ s.title }}</a>
+<h1>{{ s.title }}</h1>
+<p class="meta">{{ s.starts_at }} · {{ s.hall }}</p>
+
+<form method="post" action="{{ url_for('book', screening_id=s.id) }}">
+  <div class="screen">EKRAN</div>
+  <div class="seats">
+    {% for r in range(1, s.seat_rows + 1) %}
+    <div class="seat-row">
+      <span class="row-label">{{ r }}</span>
+      {% for c in range(1, s.seat_cols + 1) %}
+        {% if (r, c) in mine %}
+          <span class="seat mine" title="Twoje miejsce">{{ c }}</span>
+        {% elif (r, c) in taken %}
+          <span class="seat taken" title="Zajęte">{{ c }}</span>
+        {% else %}
+          <label class="seat free" title="Rząd {{ r }}, miejsce {{ c }}">
+            <input type="checkbox" name="seats" value="{{ r }}-{{ c }}">
+            <span>{{ c }}</span>
+          </label>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <p class="legend">
+    <span class="seat free"><span>&nbsp;</span></span> wolne
+    <span class="seat taken">&nbsp;</span> zajęte
+    <span class="seat mine">&nbsp;</span> Twoje
+  </p>
+  {% if g.user %}
+  <button class="btn" type="submit">Zarezerwuj wybrane miejsca</button>
+  {% else %}
+  <p class="meta"><a href="{{ url_for('login', next=request.path) }}">Zaloguj się</a>, aby zarezerwować miejsca.</p>
+  {% endif %}
+</form>
+{% endblock %}

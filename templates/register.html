@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Rejestracja{% endblock %}
+{% block content %}
+<h1>Rejestracja</h1>
+<form method="post" class="auth">
+  <label>Login (min. 3 znaki) <input name="username" required minlength="3" autofocus></label>
+  <label>Hasło (min. 6 znaków) <input type="password" name="password" required minlength="6"></label>
+  <button class="btn" type="submit">Utwórz konto</button>
+</form>
+<p class="meta">Masz już konto? <a href="{{ url_for('login') }}">Zaloguj się</a>.</p>
+{% endblock %}
