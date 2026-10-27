@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Repertuar{% endblock %}
+{% block content %}
+<h1>Repertuar</h1>
+<div class="grid">
+  {% for m in movies %}
+  <a class="card" href="{% url 'movie' movie_id=m.id %}">
+    <h2>{{ m.title }}</h2>
+    <p class="meta">{{ m.year }} · {{ m.duration }} min</p>
+    <p>{{ m.description }}</p>
+    <p class="rating">
+      {% if m.votes %}★ {{ m.avg_rating }} <span class="meta">({{ m.votes }} ocen)</span>
+      {% else %}<span class="meta">Brak ocen</span>{% endif %}
+    </p>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Logowanie{% endblock %}
+{% block content %}
+<h1>Logowanie</h1>
+<form method="post" class="auth">
+  {% csrf_token %}
+  <label>Login <input name="username" required autofocus></label>
+  <label>Hasło <input type="password" name="password" required></label>
+  <button class="btn" type="submit">Zaloguj</button>
+</form>
+<p class="meta">Nie masz konta? <a href="{% url 'register' %}">Zarejestruj się</a>.</p>
+{% endblock %}

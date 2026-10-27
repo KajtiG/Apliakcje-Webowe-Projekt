@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ movie.title }}{% endblock %}
+{% block content %}
+<a class="back" href="{% url 'index' %}">← Repertuar</a>
+<h1>{{ movie.title }}</h1>
+<p class="meta">{{ movie.year }} · {{ movie.duration }} min</p>
+<p>{{ movie.description }}</p>
+<p class="rating">
+  {% if movie.votes %}★ {{ movie.avg_rating }} <span class="meta">({{ movie.votes }} ocen)</span>
+  {% else %}<span class="meta">Brak ocen</span>{% endif %}
+</p>
+
+<section>
+  <h2>Seanse</h2>
+  {% if screenings %}
+  <ul class="screenings">
+    {% for s in screenings %}
+    <li>
+      <span>{{ s.starts_at }} · {{ s.hall }}</span>
+      <a class="btn" href="{% url 'screening' screening_id=s.id %}">Wybierz miejsca</a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="meta">Brak nadchodzących seansów.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Twoja ocena</h2>
+  {% if request.user.is_authenticated %}
+  <form method="post" action="{% url 'rate' movie_id=movie.id %}" class="inline">
+    {% csrf_token %}
+    {% for i in stars_range %}
+    <button type="submit" name="stars" value="{{ i }}" class="star {% if my_rating and i <= my_rating %}on{% endif %}" title="{{ i }}/10">★</button>
+    {% endfor %}
+    {% if my_rating %}<span class="meta">Twoja ocena: {{ my_rating }}/10</span>{% endif %}
+  </form>
+  {% else %}
+  <p class="meta"><a href="{% url 'login' %}?next={{ request.path }}">Zaloguj się</a>, aby ocenić film.</p>
+  {% endif %}
+</section>
+
+<section id="komentarze">
+  <h2>Komentarze ({{ comments|length }})</h2>
+  {% if request.user.is_authenticated %}
+  <form method="post" action="{% url 'add_comment' movie_id=movie.id %}">
+    {% csrf_token %}
+    <textarea name="body" rows="3" maxlength="1000" placeholder="Napisz komentarz…" required></textarea>
+    <button class="btn" type="submit">Dodaj komentarz</button>
+  </form>
+  {% else %}
+  <p class="meta"><a href="{% url 'login' %}?next={{ request.path }}">Zaloguj się</a>, aby komentować.</p>
+  {% endif %}
+  {% for c in comments %}
+  <div class="comment">
+    <div class="comment-head">
+      <strong>{{ c.username }}</strong>
+      <span class="meta">{{ c.created_at }}</span>
+      {% if request.user.is_authenticated and request.user.id == c.user_id %}
+      <form method="post" action="{% url 'delete_comment' comment_id=c.id %}" class="inline">
+        {% csrf_token %}
+        <button class="link danger" type="submit">usuń</button>
+      </form>
+      {% endif %}
+    </div>
+    <p>{{ c.body }}</p>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}
