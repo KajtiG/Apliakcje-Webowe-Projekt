@@ -26,6 +26,7 @@ HOURS = [(16, 0), (19, 0), (21, 30)]
 class Command(BaseCommand):
     help = "Wypełnia bazę przykładowymi filmami, seansami, ocenami i komentarzami."
 
+    def handle(self, *args, **options):
         # Filmy
         movies = []
         for title, year, duration, desc in MOVIES:
@@ -66,6 +67,7 @@ class Command(BaseCommand):
                 Rating.objects.get_or_create(
                     user=u, movie=m, defaults={"stars": 6 + (i + j) % 5}
                 )
+                
         # Zajęte miejsca na części seansów (unique_together chroni przed dublami)
         rng = random.Random(42)
         reserved = 0

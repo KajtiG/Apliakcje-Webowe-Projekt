@@ -127,8 +127,10 @@ def add_comment(request, movie_id):
     movie = get_object_or_404(Movie, id=movie_id)
     if request.method == 'POST':
         body = request.POST.get('body', '').strip()
+        image = request.FILES.get('image') # Pobranie obrazka
+        
         if 0 < len(body) <= 1000:
-            Comment.objects.create(user=request.user, movie=movie, body=body)
+            Comment.objects.create(user=request.user, movie=movie, body=body, image=image)
         else:
             messages.error(request, "Komentarz musi mieć od 1 do 1000 znaków.")
     return redirect(f"{reverse('movie', args=[movie.id])}#komentarze")
