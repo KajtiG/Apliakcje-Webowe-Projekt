@@ -9,7 +9,7 @@
     <p class="meta">{{ m.year }} · {{ m.duration }} min</p>
     <p>{{ m.description }}</p>
     <p class="rating">
-      {% if m.votes %}★ {{ m.avg_rating }} <span class="meta">({{ m.votes }} ocen)</span>
+      {% if m.votes %}★ {{ m.avg_rating|floatformat:1 }} <span class="meta">({{ m.votes }} ocen)</span>
       {% else %}<span class="meta">Brak ocen</span>{% endif %}
     </p>
   </a>

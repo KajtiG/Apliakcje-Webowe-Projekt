@@ -6,7 +6,7 @@
 <p class="meta">{{ movie.year }} · {{ movie.duration }} min</p>
 <p>{{ movie.description }}</p>
 <p class="rating">
-  {% if movie.votes %}★ {{ movie.avg_rating }} <span class="meta">({{ movie.votes }} ocen)</span>
+  {% if movie.votes %}★ {{ movie.avg_rating|floatformat:1 }} <span class="meta">({{ movie.votes }} ocen)</span>
   {% else %}<span class="meta">Brak ocen</span>{% endif %}
 </p>
 
