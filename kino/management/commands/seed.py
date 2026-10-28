@@ -26,6 +26,16 @@ HOURS = [(16, 0), (19, 0), (21, 30)]
 class Command(BaseCommand):
     help = "Wypełnia bazę przykładowymi filmami, seansami, ocenami i komentarzami."
 
+    def add_arguments(self, parser):
+        parser.add_argument("--reset", action="store_true",
+                            help="Najpierw usuń wszystkie filmy, seanse, rezerwacje, oceny i komentarze.")
+
+    def handle(self, *args, **opts):
+        if opts["reset"]:
+            for model in (Reservation, Comment, Rating, Screening, Movie):
+                model.objects.all().delete()
+            self.stdout.write("Wyczyszczono dane kina.")
+
         # Filmy
         movies = []
         for title, year, duration, desc in MOVIES:
