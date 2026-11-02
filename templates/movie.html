@@ -52,7 +52,7 @@
         <br>
         <label>Dołącz obrazek (opcjonalnie):</label>
         <input type="file" name="image" accept="image/png, image/jpeg, image/jpg">
-        <button type="submit">Dodaj komentarz</button>
+        <button type="submit" class="btn btn-primary">Dodaj komentarz</button>
     </form>
     {% endif %}
 
@@ -63,6 +63,12 @@
         <p>{{ comment.body }}</p>
         {% if comment.image %}
             <img src="{{ comment.image.url }}" alt="Obrazek do komentarza" style="max-width: 300px; display: block; margin-top: 10px;">
+        {% endif %}
+        {% if request.user == comment.user or request.user.is_staff %}
+          <form action="{% url 'delete_comment' comment.id %}" method="POST" style="margin-top: 10px;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Na pewno chcesz usunąć ten komentarz?');">Usuń komentarz</button>
+          </form>
         {% endif %}
     </div>
     {% empty %}

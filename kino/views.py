@@ -139,8 +139,15 @@ def add_comment(request, movie_id):
 def delete_comment(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
     movie_id = comment.movie.id
-    if comment.user == request.user and request.method == 'POST':
-        comment.delete()
+    
+    # Sprawdzenie uprawnień (autor lub administrator)
+    if request.user == comment.user or request.user.is_staff:
+        if request.method == 'POST':
+            comment.delete()
+            messages.success(request, "Komentarz został pomyślnie usunięty.")
+    else:
+        messages.error(request, "Nie masz uprawnień do usunięcia tego komentarza.")
+        
     return redirect(f"{reverse('movie', args=[movie_id])}#komentarze")
 
 @login_required
