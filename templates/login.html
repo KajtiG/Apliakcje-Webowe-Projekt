@@ -2,6 +2,15 @@
 {% block title %}Logowanie{% endblock %}
 {% block content %}
 <h1>Logowanie</h1>
+
+{% if messages %}
+  <ul class="messages" style="color: #dc3545; list-style-type: none; padding: 0; margin-bottom: 15px;">
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
 <form method="post" class="auth">
   {% csrf_token %}
   <label>Login <input name="username" required autofocus></label>

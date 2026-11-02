@@ -214,3 +214,8 @@ def cancel_reservation(request, res_id):
         reservation.delete()
         messages.success(request, "Rezerwacja anulowana.")
     return redirect('my_reservations')
+
+def custom_lockout_response(request, credentials, *args, **kwargs):
+    messages.error(request, "Twoje konto zostało zablokowane z powodu zbyt wielu nieudanych prób logowania. Spróbuj ponownie za godzinę.")
+    # Upewnij się, że 'login' to poprawna nazwa Twojej ścieżki logowania w urls.py
+    return redirect(reverse('login'))
