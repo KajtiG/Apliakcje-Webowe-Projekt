@@ -83,7 +83,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'Aplikacja_Web',
         'USER': 'postgres',
-        'PASSWORD': '',
+        'PASSWORD': 'test123',
         'HOST': 'localhost',
         'PORT': '5432'
     }
@@ -131,9 +131,9 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
 MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
+    "default": {
+        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+    }
 }
 
 AUTHENTICATION_BACKENDS = [
@@ -144,3 +144,7 @@ AUTHENTICATION_BACKENDS = [
 AXES_FAILURE_LIMIT = 5  
 AXES_COOLOFF_TIME = 0.1
 AXES_LOCKOUT_CALLABLE = 'kino.views.custom_lockout_response'
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'index'
+LOGOUT_REDIRECT_URL = 'index'
