@@ -5,6 +5,7 @@
 <form method="post" class="auth">
   {% csrf_token %}
   <label>Login (min. 3 znaki) <input name="username" required minlength="3" autofocus></label>
+  <label>E-mail <input type="email" name="email" required></label>
   <label>Hasło (min. 6 znaków) <input type="password" name="password" required minlength="6"></label>
   <button class="btn" type="submit">Utwórz konto</button>
 </form>

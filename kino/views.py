@@ -8,6 +8,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction, IntegrityError
 from django.urls import reverse
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 
 def index(request):
@@ -71,17 +73,28 @@ def screening_detail(request, screening_id):
 def register_view(request):
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password', '')
-        
+
+        try:
+            validate_email(email)
+            email_ok = True
+        except ValidationError:
+            email_ok = False
+
         if len(username) < 3 or len(password) < 6:
             messages.error(request, "Login min. 3 znaki, hasło min. 6 znaków.")
+        elif not email_ok:
+            messages.error(request, "Podaj poprawny adres e-mail.")
         elif User.objects.filter(username=username).exists():
             messages.error(request, "Taki użytkownik już istnieje.")
+        elif User.objects.filter(email__iexact=email).exists():
+            messages.error(request, "Ten adres e-mail jest już używany.")
         else:
-            User.objects.create_user(username=username, password=password)
+            User.objects.create_user(username=username, email=email, password=password)
             messages.success(request, "Konto utworzone. Możesz się zalogować.")
             return redirect('login')
-            
+
     return render(request, 'register.html')
 
 def login_view(request):
