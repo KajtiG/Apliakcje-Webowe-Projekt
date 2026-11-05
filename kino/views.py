@@ -10,6 +10,7 @@ from django.db import transaction, IntegrityError
 from django.urls import reverse
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
 
 
 def index(request):
@@ -82,8 +83,8 @@ def register_view(request):
         except ValidationError:
             email_ok = False
 
-        if len(username) < 3 or len(password) < 6:
-            messages.error(request, "Login min. 3 znaki, hasło min. 6 znaków.")
+        if len(username) < 3:
+            messages.error(request, "Login min. 3 znaki.")
         elif not email_ok:
             messages.error(request, "Podaj poprawny adres e-mail.")
         elif User.objects.filter(username=username).exists():
@@ -91,9 +92,17 @@ def register_view(request):
         elif User.objects.filter(email__iexact=email).exists():
             messages.error(request, "Ten adres e-mail jest już używany.")
         else:
-            User.objects.create_user(username=username, email=email, password=password)
-            messages.success(request, "Konto utworzone. Możesz się zalogować.")
-            return redirect('login')
+            # Te same walidatory co przy resecie hasła (AUTH_PASSWORD_VALIDATORS)
+            candidate = User(username=username, email=email)
+            try:
+                validate_password(password, user=candidate)
+            except ValidationError as e:
+                for msg in e.messages:
+                    messages.error(request, msg)
+            else:
+                User.objects.create_user(username=username, email=email, password=password)
+                messages.success(request, "Konto utworzone. Możesz się zalogować.")
+                return redirect('login')
 
     return render(request, 'register.html')
 
