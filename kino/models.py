@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
-
+from auditlog.registry import auditlog
 class Movie(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
@@ -31,7 +31,6 @@ class Reservation(models.Model):
 class Rating(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='ratings')
-    # Zmień tę linijkę w klasie Rating:
     stars = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)])
 
     class Meta:
@@ -43,3 +42,7 @@ class Comment(models.Model):
     body = models.TextField(max_length=1000)
     created_at = models.DateTimeField(auto_now_add=True)
     image = models.ImageField(upload_to='comments/', null=True, blank=True)
+
+
+auditlog.register(Comment)
+auditlog.register(Reservation)
