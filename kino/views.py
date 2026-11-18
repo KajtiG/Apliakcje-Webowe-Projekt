@@ -11,6 +11,39 @@ from django.urls import reverse
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
+from django.core.files.storage import default_storage
+from django.http import FileResponse, Http404, HttpResponse
+from PIL import Image
+import logging
+import os
+
+# Logger aplikacji - trafia na stdout (Container Apps -> Log Analytics)
+logger = logging.getLogger("kino")
+
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+# Serwujemy tylko te typy (po rozszerzeniu) - bez SVG/HTML, żeby uniknąć XSS
+IMAGE_CONTENT_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}
+
+
+def _client_ip(request):
+    """IP klienta zza Application Gateway (ostatni wpis X-Forwarded-For dodaje zaufane proxy)."""
+    xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    ip = xff.split(",")[-1].strip() if xff else request.META.get("REMOTE_ADDR", "")
+    return ip.rsplit(":", 1)[0] if ip.count(":") == 1 else ip  # App Gateway dopisuje :port
+
+
+def _valid_image(f):
+    """Sprawdza rozmiar i faktyczny format pliku (JPEG/PNG) - nie ufamy rozszerzeniu."""
+    if f.size > MAX_IMAGE_BYTES:
+        return False
+    try:
+        with Image.open(f) as im:
+            im.verify()
+            return im.format in ("JPEG", "PNG")
+    except Exception:
+        return False
+    finally:
+        f.seek(0)
 
 
 def index(request):
@@ -101,6 +134,7 @@ def register_view(request):
                     messages.error(request, msg)
             else:
                 User.objects.create_user(username=username, email=email, password=password)
+                logger.info("register ok user=%r ip=%s", username, _client_ip(request))
                 messages.success(request, "Konto utworzone. Możesz się zalogować.")
                 return redirect('login')
 
@@ -114,17 +148,20 @@ def login_view(request):
         
         if user is not None:
             login(request, user)
+            logger.info("login ok user=%r ip=%s", username, _client_ip(request))
             next_url = request.GET.get('next', 'index')
             # Zapobieganie przekierowaniom poza obręb własnej domeny
             if not next_url.startswith('/') or next_url.startswith('//'):
                 next_url = '/'
             return redirect(next_url)
         else:
+            logger.warning("login failed user=%r ip=%s", username, _client_ip(request))
             messages.error(request, "Nieprawidłowy login lub hasło.")
             
     return render(request, 'login.html')
 
 def logout_view(request):
+    logger.info("logout user=%r", request.user.get_username())
     logout(request)
     return redirect('index')
 
@@ -151,8 +188,12 @@ def add_comment(request, movie_id):
         body = request.POST.get('body', '').strip()
         image = request.FILES.get('image') # Pobranie obrazka
         
-        if 0 < len(body) <= 1000:
-            Comment.objects.create(user=request.user, movie=movie, body=body, image=image)
+        if image and not _valid_image(image):
+            messages.error(request, "Obrazek musi być plikiem JPEG lub PNG o rozmiarze do 5 MB.")
+        elif 0 < len(body) <= 1000:
+            comment = Comment.objects.create(user=request.user, movie=movie, body=body, image=image)
+            logger.info("comment added id=%s movie=%s user=%r has_image=%s",
+                        comment.id, movie.id, request.user.get_username(), bool(image))
         else:
             messages.error(request, "Komentarz musi mieć od 1 do 1000 znaków.")
     return redirect(f"{reverse('movie', args=[movie.id])}#komentarze")
@@ -165,9 +206,11 @@ def delete_comment(request, comment_id):
     # Sprawdzenie uprawnień (autor lub administrator)
     if request.user == comment.user or request.user.is_staff:
         if request.method == 'POST':
+            logger.info("comment deleted id=%s by=%r", comment_id, request.user.get_username())
             comment.delete()
             messages.success(request, "Komentarz został pomyślnie usunięty.")
     else:
+        logger.warning("comment delete denied id=%s by=%r", comment_id, request.user.get_username())
         messages.error(request, "Nie masz uprawnień do usunięcia tego komentarza.")
         
     return redirect(f"{reverse('movie', args=[movie_id])}#komentarze")
@@ -205,9 +248,13 @@ def book_seats(request, screening_id):
                         seat_row=r,
                         seat_col=c
                     )
+            logger.info("reservation created screening=%s user=%r seats=%s",
+                        screening.id, request.user.get_username(), sorted(seats_to_book))
             messages.success(request, f"Zarezerwowano miejsc: {len(seats_to_book)}.")
             return redirect('my_reservations')
         except IntegrityError:
+            logger.warning("reservation conflict screening=%s user=%r seats=%s",
+                           screening.id, request.user.get_username(), sorted(seats_to_book))
             messages.error(request, "Któreś z wybranych miejsc zostało właśnie zajęte. Wybierz inne.")
             
     return redirect('screening', screening_id=screening.id)
@@ -233,11 +280,35 @@ def my_reservations(request):
 def cancel_reservation(request, res_id):
     reservation = get_object_or_404(Reservation, id=res_id)
     if request.method == 'POST' and reservation.user == request.user:
+        logger.info("reservation cancelled id=%s user=%r", res_id, request.user.get_username())
         reservation.delete()
         messages.success(request, "Rezerwacja anulowana.")
     return redirect('my_reservations')
 
 def custom_lockout_response(request, credentials, *args, **kwargs):
+    logger.warning("account locked user=%r ip=%s", (credentials or {}).get("username"), _client_ip(request))
     messages.error(request, "Twoje konto zostało zablokowane z powodu zbyt wielu nieudanych prób logowania. Spróbuj ponownie za godzinę.")
     # Upewnij się, że 'login' to poprawna nazwa Twojej ścieżki logowania w urls.py
     return redirect(reverse('login'))
+
+
+def healthz(request):
+    """Probe dla Application Gateway i Container Apps - bez dotykania bazy."""
+    return HttpResponse("ok", content_type="text/plain")
+
+
+def comment_image(request, comment_id):
+    """Obrazki z Blob Storage idą przez aplikację (Blob jest prywatny, bez dostępu z internetu)."""
+    comment = get_object_or_404(Comment, id=comment_id)
+    if not comment.image:
+        raise Http404
+    ctype = IMAGE_CONTENT_TYPES.get(os.path.splitext(comment.image.name)[1].lower())
+    if ctype is None:
+        raise Http404
+    try:
+        f = default_storage.open(comment.image.name, "rb")
+    except FileNotFoundError:
+        raise Http404
+    resp = FileResponse(f, content_type=ctype)
+    resp["Cache-Control"] = "private, max-age=3600"
+    return resp

@@ -28,3 +28,6 @@ python manage.py seed
 ```bash
 python manage.py runserver
 ```
+
+--------------------------------------------------------------------
+Uruchomienie przez Docker compose lokalnie

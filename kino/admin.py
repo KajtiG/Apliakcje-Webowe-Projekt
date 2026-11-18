@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 from .models import Movie, Screening, Reservation, Rating, Comment
 
 
@@ -17,9 +18,20 @@ class ScreeningAdmin(admin.ModelAdmin):
 
 @admin.register(Reservation)
 class ReservationAdmin(admin.ModelAdmin):
-    list_display = ("user", "screening", "seat_row", "seat_col", "created_at")
-    list_filter = ("user", "screening__movie")
-    search_fields = ("user__username",)
+    # Kolumny: user | seat_row | seat_col | film | data
+    list_display = ("user", "seat_row", "seat_col", "movie", "screening_date")
+    list_select_related = ("user", "screening__movie")  # jedno zapytanie zamiast N+1
+    list_filter = ("screening__movie", ("screening__starts_at", admin.DateFieldListFilter))
+    search_fields = ("user__username", "screening__movie__title")
+    ordering = ("-screening__starts_at", "seat_row", "seat_col")
+
+    @admin.display(description="Film", ordering="screening__movie__title")
+    def movie(self, obj):
+        return obj.screening.movie.title
+
+    @admin.display(description="Data seansu", ordering="screening__starts_at")
+    def screening_date(self, obj):
+        return timezone.localtime(obj.screening.starts_at).strftime("%d.%m.%Y %H:%M")
 
 
 @admin.register(Rating)
