@@ -28,3 +28,22 @@ python manage.py seed
 ```bash
 python manage.py runserver
 ```
+
+--------------------------------------------------------------------
+Uruchomienie przez Docker compose lokalnie
+
+1. Pobranie obrazów bazy danych (PostgreSQL) + zbudowanie aplikacji 
+```bash
+sudo docker compose up --build -d
+```
+
+2. Dodanie konta administratora
+```bash
+sudo docker compose exec web python manage.py createsuperuser
+```
+
+
+3. Dodanie do bazy danych przykładowych
+```bash
+sudo docker compose exec web python manage.py seed
+```

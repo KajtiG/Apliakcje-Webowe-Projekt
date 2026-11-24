@@ -1,0 +1,40 @@
+# Lokalny test obrazu "jak w produkcji" (DEBUG=0, gunicorn, WhiteNoise) z lokalnym Postgresem.
+# Uruchom:  docker compose up --build   ->   http://localhost:8000
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: Aplikacja_Web
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test123
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d Aplikacja_Web"]
+      interval: 5s
+      retries: 10
+
+  web:
+    build: .
+    command: sh -c "python manage.py migrate && gunicorn -c gunicorn.conf.py config.wsgi:application"
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SECRET_KEY: local-compose-only-secret
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:8000
+      DJANGO_SECURE_COOKIES: "0"   # lokalnie bez HTTPS
+      DB_HOST: db
+      DB_NAME: Aplikacja_Web
+      DB_USER: postgres
+      DB_PASSWORD: test123
+    volumes:
+      - media:/app/media # W chmurze było by to w Azure Blob storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  media:
