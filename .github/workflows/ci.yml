@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: Aplikacja_Web
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test123
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SECRET_KEY: ci-only-secret
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_SECURE_COOKIES: "0"
+      DB_HOST: localhost
+      DB_NAME: Aplikacja_Web
+      DB_USER: postgres
+      DB_PASSWORD: test123
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py collectstatic --noinput
+      - run: python manage.py test -v 2
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Uruchom docker compose
+        run: docker compose up -d --build
+      - name: Czekaj na aplikację
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/admin/login/ > /dev/null; then
+              echo "Aplikacja działa"; exit 0
+            fi
+            sleep 3
+          done
+          docker compose logs web
+          exit 1
+      - name: Strona główna
+        run: curl -fsS -o /dev/null http://localhost:8000/
+      - name: Sprzątanie
+        if: always()
+        run: docker compose down -v
